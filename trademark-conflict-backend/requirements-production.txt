@@ -1,0 +1,18 @@
+fastapi
+uvicorn[standard]
+httpx
+pydantic
+python-dotenv
+psycopg[binary]
+sqlalchemy
+alembic
+redis
+mcp>=1.28, <2
+opencv-python-headless
+PyMuPDF
+openpyxl
+python-multipart
+PyJWT[crypto]==2.10.1
+rq==2.3.3
+reportlab==5.0.1
+pytesseract==0.3.13

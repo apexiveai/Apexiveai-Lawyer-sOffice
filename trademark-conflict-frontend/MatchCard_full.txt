@@ -1,0 +1,234 @@
+﻿function MatchCard({
+
+  match,
+
+  index,
+
+  jobId,
+
+}: {
+
+  match: Record<string, any>;
+
+  index: number;
+
+  jobId?: string;
+
+}) {
+
+  const [preview, setPreview] = useState<{
+
+    src: string;
+
+    title: string;
+
+  } | null>(null);
+
+  const applicationNumber = getMatchValue(match, [
+
+    "application_no",
+
+    "application_number",
+
+    "application",
+
+    "app_no",
+
+    "number",
+
+  ]);
+
+  const company = getMatchValue(match, [
+
+    "company",
+
+    "company_name",
+
+    "applicant",
+
+    "applicant_name",
+
+    "owner",
+
+    "client_owner",
+
+  ]);
+
+  const phone = getMatchValue(match, [
+
+    "phone",
+
+    "phone_number",
+
+    "telephone",
+
+    "tel",
+
+    "mobile",
+
+  ]);
+
+  const page = getMatchValue(match, [
+
+    "page",
+
+    "pdf_page",
+
+    "page_number",
+
+  ]);
+
+  const similarity = getMatchNumber(match, [
+
+    "similarity",
+
+    "similarity_score",
+
+    "score",
+
+    "confidence",
+
+  ]);
+
+  const matchType = getMatchValue(match, [
+
+    "match_type",
+
+    "type",
+
+    "reason",
+
+  ]);
+
+  const reason = getMatchValue(match, [
+
+    "match_reason",
+
+    "reason",
+
+    "description",
+
+  ]);
+
+  const client = getMatchValue(match, [
+
+    "client",
+
+    "client_name",
+
+    "representative",
+
+  ]);
+
+  const sheet = getMatchValue(match, [
+
+    "sheet",
+
+    "sheet_name",
+
+  ]);
+
+  const row = getMatchValue(match, [
+
+    "row",
+
+    "row_number",
+
+  ]);
+
+  const mark = getMatchValue(match, [
+
+    "mark",
+
+    "trademark",
+
+    "mark_name",
+
+  ]);
+
+  const pdfApplicationNumber = getMatchValue(match, [
+
+    "pdf_application_no",
+
+  ]);
+
+  const clientApplicationNumber = getMatchValue(match, [
+
+    "client_application_no",
+
+  ]);
+
+  const logoMatch =
+
+    match._logo_match &&
+
+    typeof match._logo_match === "object"
+
+      ? match._logo_match
+      : null;
+
+  const logoMatched =
+
+    String(match.match_type || "").toUpperCase() === "LOGO MATCH" 
+
+    Boolean(match.logo_match) ||
+
+    Boolean(match.logoMatched) ||
+
+    Boolean(logoMatch);
+
+  const pdfEvidence =
+
+    match.pdf_evidence &&
+
+    typeof match.pdf_evidence === "object"
+
+      ? match.pdf_evidence
+
+      : null;
+
+  const clientEvidence =
+
+    match.client_evidence &&
+
+    typeof match.client_evidence === "object"
+
+      ? match.client_evidence
+
+      : null;
+
+  const pdfEvidenceUrl = getEvidenceUrl(jobId, pdfEvidence);
+
+  const clientEvidenceUrl = getEvidenceUrl(jobId, clientEvidence);
+
+  const similarityValue =
+
+    similarity !== null
+
+      ? similarity <= 1
+
+        ? similarity * 100
+
+        : similarity
+
+      : logoMatch?.similarity_percent !== undefined
+
+        ? Number(logoMatch.similarity_percent)
+
+        : null;
+
+  const normalizedMatchType =
+
+    String(matchType || "CONFLICT")
+
+      .replace(/_/g, " ")
+
+      .toUpperCase();
+
+  const evidenceLabel =
+
+    logoMatched
+
+      ? "LOGO MATCH"
+
+      : normalizedMatchType;

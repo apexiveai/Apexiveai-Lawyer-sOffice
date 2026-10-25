@@ -1,0 +1,201 @@
+﻿    Boolean(match.logo_match) ||
+
+    Boolean(match.logoMatched) ||
+
+    Boolean(logoMatch);
+
+  const pdfEvidence =
+
+    match.pdf_evidence &&
+
+    typeof match.pdf_evidence === "object"
+
+      ? match.pdf_evidence
+
+      : null;
+
+  const clientEvidence =
+
+    match.client_evidence &&
+
+    typeof match.client_evidence === "object"
+
+      ? match.client_evidence
+
+      : null;
+
+  const pdfEvidenceUrl = getEvidenceUrl(jobId, pdfEvidence);
+
+  const clientEvidenceUrl = getEvidenceUrl(jobId, clientEvidence);
+
+  const similarityValue =
+
+    similarity !== null
+
+      ? similarity <= 1
+
+        ? similarity * 100
+
+        : similarity
+
+      : logoMatch?.similarity_percent !== undefined
+
+        ? Number(logoMatch.similarity_percent)
+
+        : null;
+
+  const normalizedMatchType =
+
+    String(matchType || "CONFLICT")
+
+      .replace(/_/g, " ")
+
+      .toUpperCase();
+
+  const evidenceLabel =
+
+    logoMatched
+
+      ? "LOGO MATCH"
+
+      : normalizedMatchType;
+
+  return (
+
+    <>
+
+      <article className="match-card">
+
+        <div className="match-card-header">
+
+          <div className="match-index">
+
+            #{String(index + 1).padStart(2, "0")}
+
+          </div>
+
+          <div className="match-header-info">
+
+            <span>APPLICATION</span>
+
+            <strong>{applicationNumber || "â€”"}</strong>
+
+          </div>
+
+          <div
+
+            className={`match-header-badge ${
+
+              logoMatched ? "logo-badge" : ""
+
+            }`}
+
+          >
+
+            {evidenceLabel}
+
+          </div>
+
+        </div>
+
+        <div className="match-card-body">
+
+          <div className="match-data-grid">
+
+            <div className="match-data">
+
+              <span>COMPANY</span>
+
+              <strong>{company || "â€”"}</strong>
+
+            </div>
+
+            <div className="match-data">
+
+              <span>PHONE</span>
+
+              <strong>{phone || "â€”"}</strong>
+
+            </div>
+
+            <div className="match-data">
+
+              <span>PDF PAGE</span>
+
+              <strong>{page || "â€”"}</strong>
+
+            </div>
+
+            <div className="match-data">
+
+              <span>MATCH TYPE</span>
+
+              <strong>{normalizedMatchType}</strong>
+
+            </div>
+
+          </div>
+
+          {(client ||
+
+            sheet ||
+
+            row ||
+
+            mark ||
+
+            reason ||
+
+            pdfApplicationNumber ||
+
+            clientApplicationNumber) && (
+
+            <div className="match-secondary-grid">
+
+              {mark && (
+
+                <div className="match-secondary-item">
+
+                  <span>MARK</span>
+
+                  <strong>{mark}</strong>
+
+                </div>
+
+              )}
+
+              {client && (
+
+                <div className="match-secondary-item">
+
+                  <span>CLIENT / REPRESENTATIVE</span>
+
+                  <strong>{client}</strong>
+
+                </div>
+
+              )}
+
+              {sheet && (
+
+                <div className="match-secondary-item">
+
+                  <span>CLIENT SHEET</span>
+
+                  <strong>{sheet}</strong>
+
+                </div>
+
+              )}
+
+              {row && (
+
+                <div className="match-secondary-item">
+
+                  <span>CLIENT ROW</span>
+
+                  <strong>{row}</strong>
+
+                </div>
+
+              )}

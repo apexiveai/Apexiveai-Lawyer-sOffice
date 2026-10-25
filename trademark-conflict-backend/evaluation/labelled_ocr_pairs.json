@@ -1,0 +1,74 @@
+[
+  {
+    "id": "en-same-mark",
+    "left_ocr_text": "SAILUN",
+    "right_ocr_text": "Sailun\u2122",
+    "left_transliteration": "",
+    "right_transliteration": "",
+    "expected_conflict": true,
+    "label_basis": "Synthetic exact-mark positive fixture."
+  },
+  {
+    "id": "myanmar-same-mark",
+    "left_ocr_text": "\u1019\u102d\u1014\u103a\u1038\u1002\u101c\u102c",
+    "right_ocr_text": "\u1019\u102d\u1014\u103a\u1038\u1002\u101c\u102c",
+    "left_transliteration": "mingalar",
+    "right_transliteration": "mingalar",
+    "expected_conflict": true,
+    "label_basis": "Synthetic same-script Myanmar positive fixture."
+  },
+  {
+    "id": "myanmar-english-curated-transliteration",
+    "left_ocr_text": "\u101b\u103d\u103e\u1031\u1019\u103c\u1014\u103a\u1019\u102c",
+    "right_ocr_text": "Shwe Myanmar",
+    "left_transliteration": "shwe myanmar",
+    "right_transliteration": "SHWE-MYANMAR",
+    "expected_conflict": true,
+    "label_basis": "Synthetic cross-script positive with supplied transliteration."
+  },
+  {
+    "id": "english-distinct-marks",
+    "left_ocr_text": "MYANMAR STAR",
+    "right_ocr_text": "MYANMAR STARS",
+    "left_transliteration": "",
+    "right_transliteration": "",
+    "expected_conflict": false,
+    "label_basis": "Synthetic negative; one-character difference must not be fuzzy-matched."
+  },
+  {
+    "id": "myanmar-distinct-marks",
+    "left_ocr_text": "\u101b\u103d\u103e\u1031",
+    "right_ocr_text": "\u1019\u103c\u1014\u103a\u1019\u102c",
+    "left_transliteration": "shwe",
+    "right_transliteration": "myanmar",
+    "expected_conflict": false,
+    "label_basis": "Synthetic distinct Myanmar marks."
+  },
+  {
+    "id": "same-mark-adjudicated-no-conflict",
+    "left_ocr_text": "LOTUS",
+    "right_ocr_text": "Lotus",
+    "left_transliteration": "lotus",
+    "right_transliteration": "lotus",
+    "expected_conflict": false,
+    "label_basis": "Synthetic adjudicated negative fixture; text identity alone is not a legal conclusion."
+  },
+  {
+    "id": "cross-script-distinct",
+    "left_ocr_text": "\u101b\u103d\u103e\u1031",
+    "right_ocr_text": "Myanmar",
+    "left_transliteration": "shwe",
+    "right_transliteration": "myanmar",
+    "expected_conflict": false,
+    "label_basis": "Synthetic distinct cross-script fixture."
+  },
+  {
+    "id": "english-second-positive",
+    "left_ocr_text": "Golden Lotus",
+    "right_ocr_text": "GOLDEN-LOTUS",
+    "left_transliteration": "",
+    "right_transliteration": "",
+    "expected_conflict": true,
+    "label_basis": "Synthetic punctuation/case normalization positive."
+  }
+]

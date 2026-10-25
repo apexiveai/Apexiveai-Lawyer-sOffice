@@ -1,0 +1,71 @@
+﻿
+              </p>
+
+            </div>
+
+          ) : matches.length === 0 ? (
+
+            <div className="empty-results success-empty">
+<div className="empty-icon">
+
+                <CheckCircle2 size={28} />
+
+              </div>
+
+              <h3>No conflicts detected</h3>
+
+              <p>
+
+                The analysis completed successfully.
+
+                No application or logo conflicts were
+
+                returned for this dataset.
+
+              </p>
+
+            </div>
+
+          ) : (
+
+            <div className="matches-list">
+
+              {matches.map(
+
+                (
+
+                  match: Record<string, any>,
+
+                  index: number
+
+                ) => (
+<MatchCard
+
+  key={`${index}-${getMatchValue(
+
+    match,
+
+    [
+
+      "application_no",
+
+      "application_number",
+
+      "application",
+
+    ]
+
+  )}`}
+
+  match={match}
+  index={index}
+  jobId={analysis?.job_id}
+/>
+
+                )
+
+              )}
+
+            </div>
+
+          )}

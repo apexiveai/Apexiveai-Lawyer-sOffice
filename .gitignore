@@ -1,0 +1,49 @@
+# Secrets and local configuration
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.sample
+
+# Python environments and generated files
+**/.venv/
+**/venv/
+**/__pycache__/
+*.py[cod]
+*$py.class
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.coverage
+**/htmlcov/
+**/*.egg-info/
+
+# Node dependencies and build output
+**/node_modules/
+**/dist/
+**/dist-ssr/
+**/coverage/
+
+# Local databases, uploaded documents, and generated analysis data
+trademark-conflict-backend/data/
+trademark-conflict-backend/evidence/
+trademark-conflict-backend/uploads/
+trademark-conflict-backend/extracted/
+trademark-conflict-backend/test_logo_extract/
+trademark-conflict-backend/results/
+trademark-conflict-backend/result.json
+trademark-conflict-backend/analysis_result.txt
+trademark-conflict-backend/analysis_top.txt
+
+# Temporary patches and backups
+trademark-conflict-backend/patch_backups/
+**/*.backup
+**/*.bak
+**/*.before_*
+
+# Local logs, editor settings, and OS files
+**/*.log
+**/.DS_Store
+**/Thumbs.db
+**/.idea/
+**/.vscode/*
+!**/.vscode/extensions.json

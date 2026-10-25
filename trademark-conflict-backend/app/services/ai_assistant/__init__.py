@@ -1,0 +1,1 @@
+"""Trademark AI Assistant service."""
