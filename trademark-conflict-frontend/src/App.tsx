@@ -2757,7 +2757,7 @@ function App() {
 
               title="Right Trademark Document"
               subtitle="Drop a PDF or XLSX file here"
-              accept=".xlsx,.xls,.pdf,application/pdf"
+              accept=".xlsx,.pdf,application/pdf"
               file={clientFile}
               onFile={setClientFile}
               onRemove={() => setClientFile(null)}

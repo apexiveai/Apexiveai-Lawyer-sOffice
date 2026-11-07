@@ -78,9 +78,9 @@ export async function waitForAnalysis(
 
 export async function uploadTwoFiles(
 
-  pdfFile: File,
+  firstFile: File,
 
-  clientFile: File,
+  secondFile: File,
   metadata: {
     jurisdiction?: string;
     niceClasses?: string;
@@ -95,45 +95,85 @@ export async function uploadTwoFiles(
     sourceRetrievedAt?: string;
   } = {},
 
-): Promise<{ job_id: string; pdf: string; xlsx?: string; client_pdf?: string; status: string }> {
+): Promise<{
+  job_id: string;
+  pdf: string | null;
+  xlsx: string | null;
+  client_pdf: string | null;
+  left_xlsx: string | null;
+  right_xlsx: string | null;
+  status: string;
+}> {
 
   const formData = new FormData();
 
-  const firstIsXlsx = pdfFile.name.toLowerCase().endsWith(".xlsx");
-  formData.append(firstIsXlsx ? "left_xlsx" : "pdf", pdfFile);
+  const fileType = (file: File): "pdf" | "xlsx" => {
+    const extension = file.name.toLowerCase().split(".").pop();
+    if (extension === "pdf" || extension === "xlsx") return extension;
+    throw new Error(`Unsupported file type: ${file.name}. Choose a PDF or XLSX file.`);
+  };
+  const firstType = fileType(firstFile);
+  const secondType = fileType(secondFile);
+  const reverseMixedPair = firstType === "xlsx" && secondType === "pdf";
 
-  formData.append(
-    firstIsXlsx
-      ? "right_xlsx"
-      : clientFile.name.toLowerCase().endsWith(".pdf")
-      ? "client_pdf"
-      : "xlsx",
-    clientFile
-  );
-  if (metadata.jurisdiction) formData.append("jurisdiction", metadata.jurisdiction);
-  if (metadata.niceClasses) formData.append("nice_classes", metadata.niceClasses);
-  if (metadata.leftJurisdiction) {
-    formData.append("left_jurisdiction", metadata.leftJurisdiction);
+  if (firstType === "xlsx" && secondType === "xlsx") {
+    formData.append("left_xlsx", firstFile);
+    formData.append("right_xlsx", secondFile);
+  } else if (reverseMixedPair) {
+    formData.append("pdf", secondFile);
+    formData.append("xlsx", firstFile);
+  } else {
+    formData.append("pdf", firstFile);
+    formData.append(
+      secondType === "pdf" ? "client_pdf" : "xlsx",
+      secondFile,
+    );
   }
-  if (metadata.rightJurisdiction) {
-    formData.append("right_jurisdiction", metadata.rightJurisdiction);
+
+  const analysisMetadata = reverseMixedPair
+    ? {
+        ...metadata,
+        leftJurisdiction: metadata.rightJurisdiction,
+        rightJurisdiction: metadata.leftJurisdiction,
+        leftNiceClasses: metadata.rightNiceClasses,
+        rightNiceClasses: metadata.leftNiceClasses,
+        leftGoodsServices: metadata.rightGoodsServices,
+        rightGoodsServices: metadata.leftGoodsServices,
+      }
+    : metadata;
+
+  if (analysisMetadata.jurisdiction) {
+    formData.append("jurisdiction", analysisMetadata.jurisdiction);
   }
-  if (metadata.leftNiceClasses) {
-    formData.append("left_nice_classes", metadata.leftNiceClasses);
+  if (analysisMetadata.niceClasses) {
+    formData.append("nice_classes", analysisMetadata.niceClasses);
   }
-  if (metadata.rightNiceClasses) {
-    formData.append("right_nice_classes", metadata.rightNiceClasses);
+  if (analysisMetadata.leftJurisdiction) {
+    formData.append("left_jurisdiction", analysisMetadata.leftJurisdiction);
   }
-  if (metadata.leftGoodsServices) {
-    formData.append("left_goods_services", metadata.leftGoodsServices);
+  if (analysisMetadata.rightJurisdiction) {
+    formData.append("right_jurisdiction", analysisMetadata.rightJurisdiction);
   }
-  if (metadata.rightGoodsServices) {
-    formData.append("right_goods_services", metadata.rightGoodsServices);
+  if (analysisMetadata.leftNiceClasses) {
+    formData.append("left_nice_classes", analysisMetadata.leftNiceClasses);
   }
-  if (metadata.sourceName) formData.append("source_name", metadata.sourceName);
-  if (metadata.sourceUrl) formData.append("source_url", metadata.sourceUrl);
-  if (metadata.sourceRetrievedAt) {
-    formData.append("source_retrieved_at", metadata.sourceRetrievedAt);
+  if (analysisMetadata.rightNiceClasses) {
+    formData.append("right_nice_classes", analysisMetadata.rightNiceClasses);
+  }
+  if (analysisMetadata.leftGoodsServices) {
+    formData.append("left_goods_services", analysisMetadata.leftGoodsServices);
+  }
+  if (analysisMetadata.rightGoodsServices) {
+    formData.append("right_goods_services", analysisMetadata.rightGoodsServices);
+  }
+  if (analysisMetadata.sourceName) {
+    formData.append("source_name", analysisMetadata.sourceName);
+  }
+  if (analysisMetadata.sourceUrl) {
+    formData.append("source_url", analysisMetadata.sourceUrl);
+  }
+  if (analysisMetadata.sourceRetrievedAt) {
+    formData.append("source_retrieved_at", analysisMetadata.sourceRetrievedAt);
   }
 
   const response = await apiFetch(

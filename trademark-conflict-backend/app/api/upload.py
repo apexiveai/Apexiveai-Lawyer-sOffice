@@ -30,6 +30,43 @@ def validate_extension(filename: str, expected: str) -> None:
         )
 
 
+def _validate_upload_pair(
+    *,
+    pdf: UploadFile | None,
+    xlsx: UploadFile | None,
+    client_pdf: UploadFile | None,
+    left_xlsx: UploadFile | None,
+    right_xlsx: UploadFile | None,
+) -> None:
+    has_xlsx_pair = left_xlsx is not None or right_xlsx is not None
+    if has_xlsx_pair:
+        if (
+            left_xlsx is None
+            or right_xlsx is None
+            or pdf is not None
+            or xlsx is not None
+            or client_pdf is not None
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Upload exactly two XLSX files for XLSX comparison.",
+            )
+        validate_extension(left_xlsx.filename or "", ".xlsx")
+        validate_extension(right_xlsx.filename or "", ".xlsx")
+        return
+
+    if pdf is None or ((xlsx is None) == (client_pdf is None)):
+        raise HTTPException(
+            status_code=400,
+            detail="Upload one PDF and one XLSX or one PDF and another PDF.",
+        )
+    validate_extension(pdf.filename or "", ".pdf")
+    if xlsx is not None:
+        validate_extension(xlsx.filename or "", ".xlsx")
+    if client_pdf is not None:
+        validate_extension(client_pdf.filename or "", ".pdf")
+
+
 async def save_upload(upload: UploadFile, destination: Path) -> Path:
     maximum = MAX_FILE_SIZE_MB * 1024 * 1024
     total = 0
@@ -86,28 +123,13 @@ async def upload_two_files(
     principal: Principal = Depends(require_roles("analyst", "admin")),
     db: Session = Depends(get_db),
 ):
-    if not pdf and not left_xlsx:
-        raise HTTPException(status_code=400, detail="PDF filename missing")
-    if not (xlsx or client_pdf or right_xlsx):
-        raise HTTPException(
-            status_code=400,
-            detail="Client XLSX or PDF filename missing",
-        )
-
-    if pdf and pdf.filename:
-        validate_extension(pdf.filename, ".pdf")
-    if left_xlsx or right_xlsx:
-        if not left_xlsx or not right_xlsx:
-            raise HTTPException(
-                status_code=400,
-                detail="Both XLSX files are required for XLSX comparison",
-            )
-        validate_extension(left_xlsx.filename or "", ".xlsx")
-        validate_extension(right_xlsx.filename or "", ".xlsx")
-    if xlsx:
-        validate_extension(xlsx.filename or "", ".xlsx")
-    if client_pdf:
-        validate_extension(client_pdf.filename or "", ".pdf")
+    _validate_upload_pair(
+        pdf=pdf,
+        xlsx=xlsx,
+        client_pdf=client_pdf,
+        left_xlsx=left_xlsx,
+        right_xlsx=right_xlsx,
+    )
 
     left_jurisdiction = left_jurisdiction or jurisdiction
     right_jurisdiction = right_jurisdiction or jurisdiction
