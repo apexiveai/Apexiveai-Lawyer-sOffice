@@ -62,6 +62,7 @@ import {
   type ReviewRecord,
   type ReviewStatus,
   type AnalysisSummary,
+  type UploadedFileType,
   type MatchRecord,
   type ReportHistoryRecord
 } from "./services/api";
@@ -91,6 +92,21 @@ type FileBoxProps = {
 
 };
 
+const supportedUploadExtensions = new Set([
+  ".pdf",
+  ".xlsx",
+  ".xlxs",
+  ".svg",
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".bmp",
+  ".tif",
+  ".tiff",
+  ".gif",
+]);
+
 function FileBox({
 
   title,
@@ -110,6 +126,17 @@ function FileBox({
 }: FileBoxProps) {
 
   const [dragging, setDragging] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
+
+  const handleFile = (selected: File) => {
+    const extension = selected.name.slice(selected.name.lastIndexOf(".")).toLowerCase();
+    if (!supportedUploadExtensions.has(extension)) {
+      setFileError("Choose a PDF, XLSX, or supported image file.");
+      return;
+    }
+    setFileError(null);
+    onFile(selected);
+  };
 
   const handleDrop = (event: DragEvent<HTMLLabelElement>) => {
 
@@ -121,7 +148,7 @@ function FileBox({
 
     if (droppedFile) {
 
-      onFile(droppedFile);
+      handleFile(droppedFile);
 
     }
 
@@ -163,7 +190,7 @@ function FileBox({
 
           if (selected) {
 
-            onFile(selected);
+            handleFile(selected);
 
           }
 
@@ -242,6 +269,7 @@ function FileBox({
         </div>
 
       )}
+      {fileError && <div className="upload-subtitle" role="alert">{fileError}</div>}
 
     </label>
 
@@ -265,6 +293,35 @@ function formatFileSize(size: number) {
 
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 
+}
+
+function getUploadedFileType(filename?: string): UploadedFileType {
+  const extension = filename?.slice(filename.lastIndexOf(".")).toLowerCase();
+  switch (extension) {
+    case ".xlsx":
+    case ".xlxs":
+      return "xlsx";
+    case ".svg":
+      return "svg";
+    case ".jpg":
+      return "jpg";
+    case ".jpeg":
+      return "jpeg";
+    case ".png":
+      return "png";
+    case ".webp":
+      return "webp";
+    case ".bmp":
+      return "bmp";
+    case ".tif":
+      return "tif";
+    case ".tiff":
+      return "tiff";
+    case ".gif":
+      return "gif";
+    default:
+      return "pdf";
+  }
 }
 
 function MetricCard({
@@ -661,8 +718,8 @@ function MatchCard({
   index,
 
   jobId,
-  clientIsPdf,
-  leftIsXlsx,
+  leftFileType,
+  rightFileType,
   onReviewSaved,
 }: {
 
@@ -671,8 +728,8 @@ function MatchCard({
   index: number;
 
   jobId?: string;
-  clientIsPdf?: boolean;
-  leftIsXlsx?: boolean;
+  leftFileType: UploadedFileType;
+  rightFileType: UploadedFileType;
   onReviewSaved: MatchReviewSaved;
 
 }) {
@@ -770,11 +827,14 @@ function MatchCard({
   };
 
 
-  const evidencePairLabel = leftIsXlsx
-    ? "XLSX ↔ XLSX"
-    : clientIsPdf
-      ? "PDF ↔ PDF"
-      : "PDF ↔ XLSX";
+  const evidencePairLabel =
+    `${leftFileType.toUpperCase()} ↔ ${rightFileType.toUpperCase()}`;
+  const leftEvidenceTitle = leftFileType === "pdf"
+    ? "GOVERNMENT JOURNAL"
+    : `LEFT ${leftFileType.toUpperCase()}`;
+  const rightEvidenceTitle = rightFileType === "pdf"
+    ? "CLIENT TRADEMARK PDF"
+    : `RIGHT ${rightFileType.toUpperCase()}`;
 
   const applicationNumber = getMatchValue(match, [
 
@@ -1239,17 +1299,15 @@ function MatchCard({
 
                 src={pdfEvidenceUrl}
 
-                title="GOVERNMENT JOURNAL"
+                title={leftEvidenceTitle}
 
                 subtitle={
 
-                  page
-
+                  leftFileType === "pdf" && page
                     ? `Page ${page}`
-
-                    : leftIsXlsx
+                    : leftFileType === "xlsx"
                       ? "Source Trademark XLSX"
-                      : "Government Journal PDF"
+                      : `${leftFileType.toUpperCase()} image evidence`
 
                 }
 
@@ -1265,17 +1323,16 @@ function MatchCard({
 
                 src={clientEvidenceUrl}
 
-                title="CLIENT TRADEMARK"
+                title={rightEvidenceTitle}
 
                 subtitle={
 
-                  sheet && row
-
+                  rightFileType === "xlsx" && sheet && row
                     ? `${sheet} • Row ${row}`
 
-                    : clientIsPdf
+                    : rightFileType === "pdf"
                       ? "Client Trademark PDF"
-                      : "Client Trademark XLSX"
+                      : `${rightFileType.toUpperCase()} image evidence`
 
                 }
 
@@ -1293,9 +1350,17 @@ function MatchCard({
 
               <span>
 
-                <FileText size={13} />
+                {leftFileType === "xlsx" ? (
+                  <FileSpreadsheet size={13} />
+                ) : leftFileType === "pdf" ? (
+                  <FileText size={13} />
+                ) : (
+                  <ImageIcon size={13} />
+                )}
 
-                {leftIsXlsx ? "Source Trademark XLSX" : "Government Journal"}
+                {leftFileType === "pdf"
+                  ? "Government Journal PDF"
+                  : `Left Trademark ${leftFileType.toUpperCase()}`}
 
               </span>
 
@@ -1303,16 +1368,14 @@ function MatchCard({
 
               <span>
 
-                {clientIsPdf ? (
+                {rightFileType === "xlsx" ? (
+                  <FileSpreadsheet size={13} />
+                ) : rightFileType === "pdf" ? (
                   <FileText size={13} />
                 ) : (
-                  <FileSpreadsheet size={13} />
+                  <ImageIcon size={13} />
                 )}
-                {leftIsXlsx
-                  ? "Source Trademark XLSX"
-                  : clientIsPdf
-                    ? "Client Trademark PDF"
-                    : "Client Trademark XLSX"}
+                {rightEvidenceTitle}
 
               </span>
 
@@ -2595,16 +2658,13 @@ function App() {
 
     rejectedCases;
 
-  const clientIsPdf = Boolean(
-    analysis?.right_file_type === "pdf" ||
-      (!analysis?.right_file_type &&
-        clientFile?.name.toLowerCase().endsWith(".pdf"))
-  );
-  const leftIsXlsx = Boolean(
-    analysis?.left_file_type === "xlsx" ||
-      (!analysis?.left_file_type &&
-        pdfFile?.name.toLowerCase().endsWith(".xlsx"))
-  );
+  const leftFileType =
+    analysis?.left_file_type ?? getUploadedFileType(pdfFile?.name);
+  const rightFileType =
+    analysis?.right_file_type ?? getUploadedFileType(clientFile?.name);
+  const includesImageUpload =
+    !["pdf", "xlsx"].includes(leftFileType) ||
+    !["pdf", "xlsx"].includes(rightFileType);
 
   if (oidcEnabled && !authReady) {
     return <main className="auth-gate">Checking sign-in…</main>;
@@ -2698,7 +2758,7 @@ function App() {
 
           <p>
 
-            Compare PDF or XLSX trademark documents
+            Compare PDF, XLSX, or image trademark files
             against each other using
 
             application, company, phone and visual
@@ -2740,8 +2800,8 @@ function App() {
             <FileBox
 
               title="Left Trademark Document"
-              subtitle="Drop a PDF or XLSX file here"
-              accept=".pdf,.xlsx,application/pdf"
+              subtitle="Drop a PDF, XLSX, or image file here"
+              accept=".pdf,.xlsx,.xlxs,.svg,.jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff,.gif"
 
               file={pdfFile}
 
@@ -2756,8 +2816,13 @@ function App() {
             <FileBox
 
               title="Right Trademark Document"
+<<<<<<< HEAD
               subtitle="Drop a PDF or XLSX file here"
               accept=".xlsx,.pdf,application/pdf"
+=======
+              subtitle="Drop a PDF, XLSX, or image file here"
+              accept=".pdf,.xlsx,.xlxs,.svg,.jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff,.gif"
+>>>>>>> f850024 (final deployment commit-v1)
               file={clientFile}
               onFile={setClientFile}
               onRemove={() => setClientFile(null)}
@@ -4378,10 +4443,9 @@ function App() {
                       key={`logo-${index}`}
 
                       match={match}
-
                       jobId={analysis?.job_id || ""}
-                      leftIsXlsx={leftIsXlsx}
-                      clientIsPdf={clientIsPdf}
+                      leftFileType={leftFileType}
+                      rightFileType={rightFileType}
 
                     />
 
@@ -4410,9 +4474,8 @@ function App() {
                       index={index}
 
                       jobId={analysis?.job_id}
-                      clientIsPdf={clientIsPdf}
-
-                      leftIsXlsx={leftIsXlsx}
+                      leftFileType={leftFileType}
+                      rightFileType={rightFileType}
                       onReviewSaved={(conflictId, review) => {
                         setAnalysis((current) => current ? ({
                           ...current,
@@ -4463,12 +4526,10 @@ function App() {
 
               <span>
 
-                {analysis.pdf_pages} PDF pages and{" "}
-
-                {analysis.client_records} client
-
-                records were processed.
-
+                {!includesImageUpload &&
+                (leftFileType === "pdf" || rightFileType === "pdf")
+                  ? `${analysis.pdf_pages} PDF pages and ${analysis.client_records} client records were processed.`
+                  : `${leftFileType.toUpperCase()} and ${rightFileType.toUpperCase()} uploads were analyzed; ${analysis.logo_matches} logo matches found.`}
               </span>
 
             </div>

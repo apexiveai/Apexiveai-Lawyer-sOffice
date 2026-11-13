@@ -121,6 +121,8 @@ def process_analysis_job(job_id: str) -> None:
         client_pdf_path = job_dir / "client_trademarks.pdf"
         left_xlsx_path = job_dir / "left_trademarks.xlsx"
         right_xlsx_path = job_dir / "right_trademarks.xlsx"
+        generic_left_files = list(job_dir.glob("left_document.*"))
+        generic_right_files = list(job_dir.glob("right_document.*"))
         service = AnalysisService(
             pdf_path=str(pdf_path),
             xlsx_path=str(xlsx_path) if xlsx_path.exists() else None,
@@ -133,6 +135,8 @@ def process_analysis_job(job_id: str) -> None:
             right_xlsx_path=(
                 str(right_xlsx_path) if right_xlsx_path.exists() else None
             ),
+            left_path=str(generic_left_files[0]) if generic_left_files else None,
+            right_path=str(generic_right_files[0]) if generic_right_files else None,
             job_id=job_id,
             progress_callback=lambda progress, message: _update_job(
                 db, job, status="PROCESSING", progress=progress,

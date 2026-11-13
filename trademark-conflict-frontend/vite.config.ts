@@ -1,14 +1,24 @@
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    proxy: {
-      '/api': 'http://127.0.0.1:8002',
-      '/evidence': 'http://127.0.0.1:8002',
-      '/health': 'http://127.0.0.1:8002',
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), 'VITE_')
+  const apiProxyTarget =
+    process.env.VITE_API_PROXY_TARGET ??
+    env.VITE_API_PROXY_TARGET ??
+    'http://127.0.0.1:8081'
+
+  return {
+    plugins: [react()],
+    server: {
+      port: 5189,
+      strictPort: true,
+      proxy: {
+        '/api': apiProxyTarget,
+        '/evidence': apiProxyTarget,
+        '/health': apiProxyTarget,
+      },
     },
-  },
+  }
 })

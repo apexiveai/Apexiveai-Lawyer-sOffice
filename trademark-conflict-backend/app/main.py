@@ -71,7 +71,7 @@ app.add_middleware(
         origin.strip()
         for origin in os.getenv(
             "CORS_ALLOWED_ORIGINS",
-            "http://localhost:5173,http://127.0.0.1:5173",
+            "http://localhost:5189,http://127.0.0.1:5189",
         ).split(",")
         if origin.strip()
     ],
@@ -243,14 +243,15 @@ async def ready():
     try:
         with engine.connect() as connection:
             connection.execute(text("SELECT 1"))
-        redis_url = os.getenv(
-            "REDIS_URL", "redis://localhost:6379/0"
-        )
-        client = Redis.from_url(redis_url)
-        try:
-            client.ping()
-        finally:
-            client.close()
+        if os.getenv("APP_ENV", "development").strip().lower() == "production":
+            redis_url = os.getenv(
+                "REDIS_URL", "redis://localhost:6379/0"
+            )
+            client = Redis.from_url(redis_url)
+            try:
+                client.ping()
+            finally:
+                client.close()
     except (SQLAlchemyError, RedisError) as error:
         raise HTTPException(status_code=503, detail="Service dependencies unavailable.") from error
     return {"status": "ready"}

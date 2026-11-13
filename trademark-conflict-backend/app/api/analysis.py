@@ -1,22 +1,45 @@
 from __future__ import annotations
 
+import logging
+import os
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from redis.exceptions import RedisError
-from rq.exceptions import NoSuchJobError
 from sqlalchemy.orm import Session
 
 from app.core.audit import record_audit_event
 from app.core.auth import Principal, require_roles
 from app.core.authorization import get_accessible_job
 from app.core.config import UPLOAD_DIR
-from app.core.jobs import enqueue_analysis, get_analysis_queue
+from app.core.jobs import enqueue_analysis
 from app.db.database import get_db
 from app.models.job import AnalysisJob
-from app.services.analysis_service import AnalysisService
+from app.worker import process_analysis_job
 
 router = APIRouter(prefix="/api/analysis", tags=["Analysis"])
+logger = logging.getLogger(__name__)
+
+
+def _enqueue_or_run_locally(
+    job_id: str,
+    background_tasks: BackgroundTasks,
+) -> str:
+    try:
+        return enqueue_analysis(job_id)
+    except RedisError as error:
+        app_env = os.getenv("APP_ENV", "development").strip().lower()
+        if app_env == "production":
+            raise
+
+        background_tasks.add_task(process_analysis_job, job_id)
+        logger.warning(
+            "Redis is unavailable; running analysis in the API process "
+            "because APP_ENV=%s: %s",
+            app_env,
+            error,
+        )
+        return f"local-background-{job_id}"
 
 
 def _job_status(job: AnalysisJob) -> dict[str, object]:
@@ -39,25 +62,39 @@ def _uploaded_paths(job_id: str) -> dict[str, str | None]:
         "left_xlsx_path": job_dir / "left_trademarks.xlsx",
         "right_xlsx_path": job_dir / "right_trademarks.xlsx",
     }
-    return {
+    uploaded_paths = {
         name: str(path) if path.exists() else None
         for name, path in paths.items()
     }
+    for side in ("left", "right"):
+        matches = list(job_dir.glob(f"{side}_document.*"))
+        uploaded_paths[f"{side}_file_path"] = (
+            str(matches[0]) if matches else None
+        )
+    return uploaded_paths
 
 
 @router.post("/{job_id}")
 async def analyze_job(
     job_id: str,
+    background_tasks: BackgroundTasks,
     principal: Principal = Depends(require_roles("analyst", "admin")),
     db: Session = Depends(get_db),
 ):
     job = get_accessible_job(job_id, principal, db)
     paths = _uploaded_paths(job_id)
-    if not (
-        paths["pdf_path"] or paths["left_xlsx_path"]
-    ) or not (
-        paths["xlsx_path"] or paths["client_pdf_path"] or paths["right_xlsx_path"]
-    ):
+    has_generic_pair = bool(
+        paths["left_file_path"] and paths["right_file_path"]
+    )
+    has_legacy_pair = bool(
+        (paths["pdf_path"] or paths["left_xlsx_path"])
+        and (
+            paths["xlsx_path"]
+            or paths["client_pdf_path"]
+            or paths["right_xlsx_path"]
+        )
+    )
+    if not (has_generic_pair or has_legacy_pair):
         raise HTTPException(status_code=404, detail="Uploaded files not found.")
     if job.status in {"QUEUED", "PROCESSING"}:
         return _job_status(job)
@@ -70,7 +107,7 @@ async def analyze_job(
     job.updated_at = datetime.now(timezone.utc)
     db.commit()
     try:
-        task_id = enqueue_analysis(job_id)
+        task_id = _enqueue_or_run_locally(job_id, background_tasks)
     except RedisError as error:
         job.status = previous_status
         job.message = "Analysis queue is unavailable."
@@ -100,6 +137,7 @@ async def get_analysis_status(
 @router.post("/{job_id}/retry")
 async def retry_analysis(
     job_id: str,
+    background_tasks: BackgroundTasks,
     principal: Principal = Depends(require_roles("analyst", "admin")),
     db: Session = Depends(get_db),
 ):
@@ -117,7 +155,7 @@ async def retry_analysis(
     job.updated_at = datetime.now(timezone.utc)
     db.commit()
     try:
-        task_id = enqueue_analysis(job_id)
+        task_id = _enqueue_or_run_locally(job_id, background_tasks)
     except RedisError as error:
         job.status = previous_status
         job.message = "Analysis queue is unavailable."

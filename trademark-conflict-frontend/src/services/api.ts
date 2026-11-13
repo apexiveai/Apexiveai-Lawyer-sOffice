@@ -16,9 +16,9 @@ export type AnalysisSummary = {
 
   job_id: string;
 
-  left_file_type?: "pdf" | "xlsx";
+  left_file_type?: UploadedFileType;
 
-  right_file_type?: "pdf" | "xlsx";
+  right_file_type?: UploadedFileType;
 
   pdf_pages: number;
 
@@ -35,6 +35,19 @@ export type AnalysisSummary = {
   matches: MatchRecord[];
 
 };
+
+export type UploadedFileType =
+  | "pdf"
+  | "xlsx"
+  | "svg"
+  | "jpg"
+  | "jpeg"
+  | "png"
+  | "webp"
+  | "bmp"
+  | "tif"
+  | "tiff"
+  | "gif";
 
 export type MatchRecord = Record<string, unknown>;
 
@@ -97,16 +110,22 @@ export async function uploadTwoFiles(
 
 ): Promise<{
   job_id: string;
+<<<<<<< HEAD
   pdf: string | null;
   xlsx: string | null;
   client_pdf: string | null;
   left_xlsx: string | null;
   right_xlsx: string | null;
+=======
+  left_file?: string;
+  right_file?: string;
+>>>>>>> f850024 (final deployment commit-v1)
   status: string;
 }> {
 
   const formData = new FormData();
 
+<<<<<<< HEAD
   const fileType = (file: File): "pdf" | "xlsx" => {
     const extension = file.name.toLowerCase().split(".").pop();
     if (extension === "pdf" || extension === "xlsx") return extension;
@@ -128,6 +147,14 @@ export async function uploadTwoFiles(
       secondType === "pdf" ? "client_pdf" : "xlsx",
       secondFile,
     );
+=======
+  formData.append("left_file", pdfFile);
+  formData.append("right_file", clientFile);
+  if (metadata.jurisdiction) formData.append("jurisdiction", metadata.jurisdiction);
+  if (metadata.niceClasses) formData.append("nice_classes", metadata.niceClasses);
+  if (metadata.leftJurisdiction) {
+    formData.append("left_jurisdiction", metadata.leftJurisdiction);
+>>>>>>> f850024 (final deployment commit-v1)
   }
 
   const analysisMetadata = reverseMixedPair

@@ -210,7 +210,8 @@ def evaluate_dataset(
         "dataset_kind": "real-image" if real_dataset else "synthetic-text",
         "scope_note": (
             "Metrics are meaningful only for independently adjudicated and "
-            "representative input. Text-only fixtures are not production accuracy."
+            "representative input. Synthetic text-only fixtures are not a "
+            "representative sample or production accuracy."
         ),
         "ocr_text_only": _confusion_matrix(
             prepared_rows,

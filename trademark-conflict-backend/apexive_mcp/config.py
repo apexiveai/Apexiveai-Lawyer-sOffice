@@ -60,7 +60,7 @@ BACKEND_BASE_URL = os.getenv(
 
     "BACKEND_BASE_URL",
 
-    "http://127.0.0.1:8000",
+    "http://127.0.0.1:8081",
 
 ).rstrip("/")
 
@@ -202,7 +202,7 @@ EVIDENCE_PUBLIC_BASE_URL = os.getenv(
 
     "EVIDENCE_PUBLIC_BASE_URL",
 
-    "http://127.0.0.1:8000/evidence",
+    "http://127.0.0.1:8081/evidence",
 
 ).rstrip("/")
 
@@ -377,9 +377,9 @@ else:
 
     CORS_ORIGINS = [
 
-        "http://localhost:5173",
+        "http://localhost:5189",
 
-        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5189",
 
     ]
 

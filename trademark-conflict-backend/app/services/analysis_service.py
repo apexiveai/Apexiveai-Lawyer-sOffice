@@ -15,6 +15,7 @@ import cv2
 import numpy as np
 
 import pymupdf as pymupdf
+from PIL import Image
 
 from openpyxl import load_workbook
 from app.services.ai_logo.verifier import LogoAIVerifier
@@ -85,6 +86,8 @@ class AnalysisService:
         client_pdf_path: Optional[str] = None,
         left_xlsx_path: Optional[str] = None,
         right_xlsx_path: Optional[str] = None,
+        left_path: Optional[str] = None,
+        right_path: Optional[str] = None,
         progress_callback: Callable[[int, str], None] | None = None,
         analysis_metadata: Dict[str, Any] | None = None,
 
@@ -96,6 +99,8 @@ class AnalysisService:
         self.client_pdf_path = Path(client_pdf_path) if client_pdf_path else None
         self.left_xlsx_path = Path(left_xlsx_path) if left_xlsx_path else None
         self.right_xlsx_path = Path(right_xlsx_path) if right_xlsx_path else None
+        self.left_path = Path(left_path) if left_path else None
+        self.right_path = Path(right_path) if right_path else None
         self._client_pdf_records: List[Dict[str, Any]] = []
         self.progress_callback = progress_callback
         self.analysis_metadata = analysis_metadata or {}
@@ -137,6 +142,9 @@ class AnalysisService:
                 encoding="utf-8",
                 errors="backslashreplace",
             )
+
+        if self.left_path and self.right_path:
+            return self._run_uploaded_pair()
 
         if self.left_xlsx_path and self.right_xlsx_path:
             return self._run_xlsx_pair()
@@ -745,6 +753,172 @@ class AnalysisService:
         self._persist_result(result)
         self._report_progress(100, "Analysis results saved.")
         return result
+
+    def _run_uploaded_pair(self) -> Dict[str, Any]:
+        left_path = self.left_path
+        right_path = self.right_path
+        if left_path is None or right_path is None:
+            raise ValueError("Both uploaded document paths are required.")
+
+        left_type = left_path.suffix.lower().lstrip(".")
+        right_type = right_path.suffix.lower().lstrip(".")
+        left_type = "xlsx" if left_type == "xlxs" else left_type
+        right_type = "xlsx" if right_type == "xlxs" else right_type
+        file_types = {
+            "pdf",
+            "xlsx",
+            "svg",
+            "jpg",
+            "jpeg",
+            "png",
+            "webp",
+            "bmp",
+            "tif",
+            "tiff",
+            "gif",
+        }
+        if left_type not in file_types or right_type not in file_types:
+            raise ValueError(
+                f"Unsupported uploaded file types: {left_type or '(none)'} and "
+                f"{right_type or '(none)'}."
+            )
+
+        self.left_path = None
+        self.right_path = None
+
+        if left_type == "xlsx" and right_type == "xlsx":
+            self.left_xlsx_path = left_path
+            self.right_xlsx_path = right_path
+            return self._run_xlsx_pair()
+
+        image_types = {
+            "svg",
+            "jpg",
+            "jpeg",
+            "png",
+            "webp",
+            "bmp",
+            "tif",
+            "tiff",
+            "gif",
+        }
+        if left_type in image_types or right_type in image_types:
+            return self._run_visual_pair(
+                left_path,
+                right_path,
+                left_type,
+                right_type,
+            )
+
+        if left_type == "pdf":
+            self.pdf_path = left_path
+        else:
+            self.pdf_path = right_path
+
+        if left_type == "pdf" and right_type == "pdf":
+            self.client_pdf_path = right_path
+        else:
+            self.xlsx_path = left_path if left_type == "xlsx" else right_path
+
+        return self.run()
+
+    def _run_visual_pair(
+        self,
+        left_path: Path,
+        right_path: Path,
+        left_type: str,
+        right_type: str,
+    ) -> Dict[str, Any]:
+        self._report_progress(10, "Extracting images from uploaded documents.")
+        left_images = self._extract_visual_assets(left_path, "left", left_type)
+        right_images = self._extract_visual_assets(right_path, "right", right_type)
+        self._report_progress(40, "Comparing uploaded images and logos.")
+        logo_matches = self._compare_logos(left_images, right_images)
+        matches = self._combine_matches([], [], [], logo_matches)
+        for index, match in enumerate(matches, start=1):
+            self._render_match_evidence(match, index)
+        pdf_pages = sum(
+            PDFExtractor(str(path)).get_page_count()
+            for path, file_type in (
+                (left_path, left_type),
+                (right_path, right_type),
+            )
+            if file_type == "pdf"
+        )
+        result = {
+            "job_id": self.job_id,
+            "left_file_type": left_type,
+            "right_file_type": right_type,
+            "pdf_pages": pdf_pages,
+            "client_records": len(right_images),
+            "pdf_logos": len(left_images),
+            "xlsx_logos": len(right_images),
+            "application_matches": 0,
+            "logo_matches": len(logo_matches),
+            "company_matches": 0,
+            "phone_matches": 0,
+            "matches": matches,
+            **self.analysis_metadata,
+            "application_match_details": [],
+            "company_match_details": [],
+            "phone_match_details": [],
+            "logo_match_details": logo_matches,
+        }
+        self._persist_result(result)
+        self._report_progress(100, "Analysis results saved.")
+        return result
+
+    def _extract_visual_assets(
+        self,
+        source_path: Path,
+        side: str,
+        file_type: str,
+    ) -> List[Dict[str, Any]]:
+        if file_type == "xlsx":
+            return XLSXExtractor(str(source_path)).extract_images(
+                f"{self.job_id}_{side}"
+            )
+
+        if file_type == "pdf":
+            extractor = PDFExtractor(str(source_path))
+            images = extractor.extract_images(f"{self.job_id}_{side}")
+            if not images:
+                images = extractor.render_pages(f"{self.job_id}_{side}")
+            return images
+
+        output_dir = self.job_extracted_dir / "uploaded_images"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        image_path = output_dir / f"{side}.png"
+        if file_type == "svg":
+            with pymupdf.open(
+                stream=source_path.read_bytes(),
+                filetype="svg",
+            ) as document:
+                if not document.page_count:
+                    raise ValueError(f"SVG file has no renderable page: {source_path.name}")
+                document[0].get_pixmap(alpha=True).save(str(image_path))
+        else:
+            with Image.open(source_path) as image:
+                image.seek(0)
+                image.convert("RGBA").save(image_path, format="PNG")
+
+        with Image.open(image_path) as image:
+            width, height = image.size
+        return [
+            {
+                "id": f"{side}_image",
+                "source_type": f"{side}_image",
+                "source_file": source_path.name,
+                "page": 1,
+                "sheet": source_path.stem,
+                "row": 1,
+                "image_path": str(image_path),
+                "bbox": None,
+                "width": width,
+                "height": height,
+                "confidence": 1.0,
+            }
+        ]
 
     def _report_progress(self, progress: int, message: str) -> None:
         if self.progress_callback is not None:
@@ -1500,15 +1674,10 @@ class AnalysisService:
 
     ) -> str:
         match = re.search(
-
             r"\(541\).*?:\s*(.*?)"
-
-            r"(?:\n|\r)",
-
+            r"(?=\(540\)|[\n\r]|$)",
             text,
-
             re.IGNORECASE,
-
         )
 
         if not match:

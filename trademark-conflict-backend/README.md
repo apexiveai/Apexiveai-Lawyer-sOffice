@@ -1,5 +1,32 @@
 # Trademark conflict deployment and analysis notes
 
+## Local development
+
+Copy `.env.example` to `.env` to customize local settings. The backend and MCP
+server load this file automatically; values already set in the process
+environment take precedence. The local `.env` is ignored by Git and
+contains only local development defaults. Do not reuse it in production.
+
+Start the backend from this directory on port `8081` so the Vite proxy can
+reach it:
+
+```powershell
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8081
+```
+
+In development, analysis runs as an API background task if Redis is not
+available. Production still requires Redis and a running analysis worker.
+
+Start the frontend from `trademark-conflict-frontend` with `npm run dev`; Vite
+serves it on `http://localhost:5189` and proxies API, evidence, and health
+requests to `http://127.0.0.1:8081`. Set `VITE_API_PROXY_TARGET` when the
+backend uses a different local address or port.
+
+The comparison form accepts PDF and XLSX documents (including `.xlxs` as a
+filename alias) or standalone SVG, JPG, JPEG, PNG, WEBP, BMP, TIFF, and GIF
+images on either side. Image uploads are compared visually; PDF/XLSX document
+comparisons continue to use the document text and logo extraction pipeline.
+
 ## Production configuration
 
 Copy/configure `POSTGRES_PASSWORD`, `OIDC_ISSUER`, `OIDC_AUDIENCE`,
@@ -7,6 +34,12 @@ Copy/configure `POSTGRES_PASSWORD`, `OIDC_ISSUER`, `OIDC_AUDIENCE`,
 `EVIDENCE_URL_SIGNING_KEY` in the Compose environment. Do not commit these
 values. The backend rejects production startup when the OIDC or evidence
 signing settings are missing.
+
+The Vite proxy is for local development only. When building the frontend
+container, set `VITE_API_BASE_URL` to the public backend origin, or configure
+the frontend host to proxy `/api`, `/evidence`, and `/health` to the backend.
+For a separate frontend and backend origin, set `CORS_ALLOWED_ORIGINS` to the
+frontend origin.
 
 The identity provider's SPA client must allow this redirect URI:
 
@@ -43,6 +76,61 @@ Uploaded files and generated artifacts are scheduled for deletion after
 `JOB_RETENTION_DAYS` (90 by default). Review/audit records remain in PostgreSQL
 after file cleanup. Configure operational log shipping for the JSON API logs,
 worker logs, and backup service output.
+
+## Ownkube variables
+
+Create separate Ownkube services from `trademark-conflict-backend/Dockerfile`
+and `trademark-conflict-frontend/Dockerfile`. The backend listens on port
+`8081`; the frontend listens on port `80`.
+
+Set these backend runtime variables (use your own service URLs and secrets):
+
+```text
+APP_ENV=production
+DATABASE_URL=postgresql+psycopg://<user>:<password>@<postgres-host>:5432/<database>
+REDIS_URL=redis://<redis-host>:6379/0
+OIDC_ISSUER=https://<identity-provider>/
+OIDC_AUDIENCE=<api-audience>
+OIDC_JWKS_URL=https://<identity-provider>/.well-known/jwks.json
+EVIDENCE_URL_SIGNING_KEY=<unique-random-secret>
+CORS_ALLOWED_ORIGINS=https://<frontend-domain>
+OCR_ENABLED=true
+OCR_LANGUAGES=eng+mya
+```
+
+`DATABASE_URL` can instead be supplied as `DB_HOST`, `DB_PORT`, `DB_NAME`,
+`DB_USER`, and `DB_PASSWORD`. `CORS_ALLOWED_ORIGINS` must contain the public
+frontend origin, with no trailing slash. The OIDC provider must issue API
+tokens with the configured audience and stable `tenant_id` and `roles` claims.
+The frontend's OIDC client must allow
+`https://<frontend-domain>/auth/callback`.
+
+Production analysis also needs a worker service using the backend image and
+the same database, Redis, environment variables, and persistent upload/evidence
+storage. Set its Ownkube start command to:
+
+```sh
+rq worker --url "$REDIS_URL" trademark-analysis
+```
+
+Set these frontend **build-time** variables on the frontend service:
+
+```text
+VITE_API_BASE_URL=https://<backend-domain>
+VITE_OIDC_AUTHORITY=https://<identity-provider>/
+VITE_OIDC_CLIENT_ID=<spa-client-id>
+VITE_OIDC_SCOPE=openid profile email
+```
+
+If the frontend domain proxies `/api`, `/evidence`, and `/health` to the backend,
+`VITE_API_BASE_URL` can be empty instead. `VITE_API_PROXY_TARGET` is for local
+Vite development only and is not used by the production NGINX container.
+
+If deploying the MCP server separately, also set its runtime `MCP_API_KEY`
+(at least 32 characters), `BACKEND_BASE_URL=https://<backend-domain>`,
+`EVIDENCE_PUBLIC_BASE_URL=https://<backend-domain>/evidence`, and
+`MCP_ALLOW_LOCAL_PATHS=false`. Configure that service's start command to run
+`python -m apexive_mcp.server`; it listens on `MCP_PORT` (default `8100`).
 
 ## Jurisdiction and source metadata
 

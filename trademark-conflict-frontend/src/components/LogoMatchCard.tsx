@@ -1,3 +1,5 @@
+import type { UploadedFileType } from "../services/api";
+
 type LogoMatch = {
 
   logo_match?: boolean;
@@ -68,9 +70,9 @@ type Props = {
 
   match: LogoMatch;
 
-  leftIsXlsx: boolean;
+  leftFileType: UploadedFileType;
 
-  clientIsPdf: boolean;
+  rightFileType: UploadedFileType;
 
 };
 
@@ -151,9 +153,9 @@ export default function LogoMatchCard({
 
   match,
 
-  leftIsXlsx,
+  leftFileType,
 
-  clientIsPdf,
+  rightFileType,
 
 }: Props) {
 
@@ -230,27 +232,19 @@ export default function LogoMatchCard({
     match.row;
   const leftRow = match.pdf_row;
 
-  const leftTitle = leftIsXlsx
-    ? "LEFT XLSX"
-    : clientIsPdf
-      ? "LEFT PDF"
-      : "GOVERNMENT PDF";
-  const rightTitle = leftIsXlsx
-    ? "RIGHT XLSX"
-    : clientIsPdf
-      ? "RIGHT PDF"
-      : "CLIENT TRADEMARK";
-  const pairLabel = leftIsXlsx
-    ? "XLSX ↔ XLSX"
-    : clientIsPdf
-      ? "PDF ↔ PDF"
-      : "PDF ↔ XLSX";
+  const leftTitle = leftFileType === "pdf"
+    ? "GOVERNMENT PDF"
+    : `LEFT ${leftFileType.toUpperCase()}`;
+  const rightTitle = rightFileType === "pdf"
+    ? "RIGHT PDF"
+    : `RIGHT ${rightFileType.toUpperCase()}`;
+  const pairLabel = `${leftFileType.toUpperCase()} ↔ ${rightFileType.toUpperCase()}`;
 
   return (
 
     <div
       className={`logo-match-card ${
-        leftIsXlsx ? "xlsx-logo-match-card" : ""
+        leftFileType === "xlsx" ? "xlsx-logo-match-card" : ""
       }`}
     >
 
@@ -290,15 +284,14 @@ export default function LogoMatchCard({
 
           subtitle={
 
-            leftIsXlsx && leftRow
+            leftFileType === "xlsx" && leftRow
               ? `${match.pdf_sheet || "Source"} · Row ${leftRow}`
-              : page
-
+              : leftFileType === "pdf" && page
               ? `Page ${page}`
 
-              : leftIsXlsx
+              : leftFileType === "xlsx"
                 ? "Source XLSX evidence"
-                : "PDF evidence"
+                : `${leftFileType.toUpperCase()} image evidence`
 
           }
 
@@ -312,15 +305,14 @@ export default function LogoMatchCard({
 
           subtitle={
 
-            clientIsPdf && clientPage
+            rightFileType === "pdf" && clientPage
               ? `Page ${clientPage}`
-              : clientRow
-
+              : rightFileType === "xlsx" && clientRow
               ? `${match.sheet || "Client"} · Row ${clientRow}`
 
-              : clientIsPdf
+              : rightFileType === "pdf"
                 ? "PDF evidence"
-                : "Client evidence"
+                : `${rightFileType.toUpperCase()} image evidence`
 
           }
 

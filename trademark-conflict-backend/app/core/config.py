@@ -29,11 +29,18 @@ for directory in [
 MAX_FILE_SIZE_MB = int(os.getenv("MAX_FILE_SIZE_MB", "100"))
 
 ALLOWED_EXTENSIONS = {
-
     ".pdf",
-
     ".xlsx",
-
+    ".xlxs",
+    ".svg",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp",
+    ".bmp",
+    ".tif",
+    ".tiff",
+    ".gif",
 }
 
 SIMILARITY_THRESHOLD = float(

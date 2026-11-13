@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.core.audit import record_audit_event
 from app.core.auth import Principal, require_roles
-from app.core.config import MAX_FILE_SIZE_MB, UPLOAD_DIR
+from app.core.config import ALLOWED_EXTENSIONS, MAX_FILE_SIZE_MB, UPLOAD_DIR
 from app.db.database import get_db
 from app.models.job import AnalysisJob
 
@@ -30,6 +30,7 @@ def validate_extension(filename: str, expected: str) -> None:
         )
 
 
+<<<<<<< HEAD
 def _validate_upload_pair(
     *,
     pdf: UploadFile | None,
@@ -65,6 +66,18 @@ def _validate_upload_pair(
         validate_extension(xlsx.filename or "", ".xlsx")
     if client_pdf is not None:
         validate_extension(client_pdf.filename or "", ".pdf")
+=======
+def validate_supported_upload(filename: str) -> str:
+    extension = Path(filename).suffix.lower()
+    if extension not in ALLOWED_EXTENSIONS:
+        supported = ", ".join(sorted(ALLOWED_EXTENSIONS))
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type {extension or '(none)'}. "
+            f"Supported types: {supported}",
+        )
+    return extension
+>>>>>>> f850024 (final deployment commit-v1)
 
 
 async def save_upload(upload: UploadFile, destination: Path) -> Path:
@@ -103,6 +116,8 @@ def _parse_nice_classes(value: str) -> list[int]:
 
 @router.post("/two-files")
 async def upload_two_files(
+    left_file: UploadFile | None = File(None),
+    right_file: UploadFile | None = File(None),
     pdf: UploadFile | None = File(None),
     xlsx: UploadFile | None = File(None),
     client_pdf: UploadFile | None = File(None),
@@ -123,6 +138,7 @@ async def upload_two_files(
     principal: Principal = Depends(require_roles("analyst", "admin")),
     db: Session = Depends(get_db),
 ):
+<<<<<<< HEAD
     _validate_upload_pair(
         pdf=pdf,
         xlsx=xlsx,
@@ -130,6 +146,53 @@ async def upload_two_files(
         left_xlsx=left_xlsx,
         right_xlsx=right_xlsx,
     )
+=======
+    generic_upload = left_file is not None or right_file is not None
+    left_extension = ""
+    right_extension = ""
+    legacy_uploads = (pdf, xlsx, client_pdf, left_xlsx, right_xlsx)
+    if generic_upload:
+        if not left_file or not right_file:
+            raise HTTPException(
+                status_code=400,
+                detail="Both left and right files are required.",
+            )
+        if any(legacy_uploads):
+            raise HTTPException(
+                status_code=400,
+                detail="Use either left/right files or legacy upload fields, not both.",
+            )
+        if not left_file.filename or not right_file.filename:
+            raise HTTPException(
+                status_code=400,
+                detail="Both uploaded files must have a filename.",
+            )
+        left_extension = validate_supported_upload(left_file.filename)
+        right_extension = validate_supported_upload(right_file.filename)
+    else:
+        if not pdf and not left_xlsx:
+            raise HTTPException(status_code=400, detail="PDF filename missing")
+        if not (xlsx or client_pdf or right_xlsx):
+            raise HTTPException(
+                status_code=400,
+                detail="Client XLSX or PDF filename missing",
+            )
+
+    if not generic_upload and pdf and pdf.filename:
+        validate_extension(pdf.filename, ".pdf")
+    if not generic_upload and (left_xlsx or right_xlsx):
+        if not left_xlsx or not right_xlsx:
+            raise HTTPException(
+                status_code=400,
+                detail="Both XLSX files are required for XLSX comparison",
+            )
+        validate_extension(left_xlsx.filename or "", ".xlsx")
+        validate_extension(right_xlsx.filename or "", ".xlsx")
+    if not generic_upload and xlsx:
+        validate_extension(xlsx.filename or "", ".xlsx")
+    if not generic_upload and client_pdf:
+        validate_extension(client_pdf.filename or "", ".pdf")
+>>>>>>> f850024 (final deployment commit-v1)
 
     left_jurisdiction = left_jurisdiction or jurisdiction
     right_jurisdiction = right_jurisdiction or jurisdiction
@@ -181,8 +244,23 @@ async def upload_two_files(
     client_pdf_path = job_dir / "client_trademarks.pdf"
     left_xlsx_path = job_dir / "left_trademarks.xlsx"
     right_xlsx_path = job_dir / "right_trademarks.xlsx"
+    left_document_path = (
+        job_dir / f"left_document{left_extension}" if generic_upload else None
+    )
+    right_document_path = (
+        job_dir / f"right_document{right_extension}" if generic_upload else None
+    )
 
     try:
+        if generic_upload:
+            assert (
+                left_file is not None
+                and right_file is not None
+                and left_document_path is not None
+                and right_document_path is not None
+            )
+            await save_upload(left_file, left_document_path)
+            await save_upload(right_file, right_document_path)
         if pdf and pdf.filename:
             await save_upload(pdf, pdf_path)
         if left_xlsx and right_xlsx:
@@ -241,6 +319,8 @@ async def upload_two_files(
         "client_pdf": str(client_pdf_path) if client_pdf_path.exists() else None,
         "left_xlsx": str(left_xlsx_path) if left_xlsx_path.exists() else None,
         "right_xlsx": str(right_xlsx_path) if right_xlsx_path.exists() else None,
+        "left_file": str(left_document_path) if left_document_path else None,
+        "right_file": str(right_document_path) if right_document_path else None,
         "status": "UPLOADED",
         "jurisdiction": jurisdiction.upper() if jurisdiction else None,
         "nice_classes": class_values,
