@@ -20,5 +20,19 @@ export default defineConfig(({ mode }) => {
         '/health': apiProxyTarget,
       },
     },
+    proxy: {
+      "/api": {
+        target: env.VITE_API_PROXY_TARGET,
+        changeOrigin: true,
+      },
+      "/evidence": {
+        target: env.VITE_API_PROXY_TARGET,
+        changeOrigin: true,
+      },
+      "/health": {
+        target: env.VITE_API_PROXY_TARGET,
+        changeOrigin: true,
+      },
+    },
   }
 })
