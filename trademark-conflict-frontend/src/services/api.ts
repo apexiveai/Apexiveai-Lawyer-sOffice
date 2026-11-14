@@ -90,9 +90,7 @@ export async function waitForAnalysis(
 }
 
 export async function uploadTwoFiles(
-
   firstFile: File,
-
   secondFile: File,
   metadata: {
     jurisdiction?: string;
@@ -107,130 +105,82 @@ export async function uploadTwoFiles(
     sourceUrl?: string;
     sourceRetrievedAt?: string;
   } = {},
-
 ): Promise<{
   job_id: string;
-<<<<<<< HEAD
-  pdf: string | null;
-  xlsx: string | null;
-  client_pdf: string | null;
-  left_xlsx: string | null;
-  right_xlsx: string | null;
-=======
-  left_file?: string;
-  right_file?: string;
->>>>>>> f850024 (final deployment commit-v1)
+  left_file: string | null;
+  right_file: string | null;
   status: string;
 }> {
-
   const formData = new FormData();
-
-<<<<<<< HEAD
-  const fileType = (file: File): "pdf" | "xlsx" => {
+  const supportedExtensions = new Set([
+    "pdf",
+    "xlsx",
+    "xlxs",
+    "svg",
+    "jpg",
+    "jpeg",
+    "png",
+    "webp",
+    "bmp",
+    "tif",
+    "tiff",
+    "gif",
+  ]);
+  for (const file of [firstFile, secondFile]) {
     const extension = file.name.toLowerCase().split(".").pop();
-    if (extension === "pdf" || extension === "xlsx") return extension;
-    throw new Error(`Unsupported file type: ${file.name}. Choose a PDF or XLSX file.`);
-  };
-  const firstType = fileType(firstFile);
-  const secondType = fileType(secondFile);
-  const reverseMixedPair = firstType === "xlsx" && secondType === "pdf";
+    if (!extension || !supportedExtensions.has(extension)) {
+      throw new Error(
+        `Unsupported file type: ${file.name}. Choose a PDF, XLSX, or supported image file.`,
+      );
+    }
+  }
 
-  if (firstType === "xlsx" && secondType === "xlsx") {
-    formData.append("left_xlsx", firstFile);
-    formData.append("right_xlsx", secondFile);
-  } else if (reverseMixedPair) {
-    formData.append("pdf", secondFile);
-    formData.append("xlsx", firstFile);
-  } else {
-    formData.append("pdf", firstFile);
-    formData.append(
-      secondType === "pdf" ? "client_pdf" : "xlsx",
-      secondFile,
-    );
-=======
-  formData.append("left_file", pdfFile);
-  formData.append("right_file", clientFile);
-  if (metadata.jurisdiction) formData.append("jurisdiction", metadata.jurisdiction);
-  if (metadata.niceClasses) formData.append("nice_classes", metadata.niceClasses);
+  formData.append("left_file", firstFile);
+  formData.append("right_file", secondFile);
+
+  if (metadata.jurisdiction) {
+    formData.append("jurisdiction", metadata.jurisdiction);
+  }
+  if (metadata.niceClasses) {
+    formData.append("nice_classes", metadata.niceClasses);
+  }
   if (metadata.leftJurisdiction) {
     formData.append("left_jurisdiction", metadata.leftJurisdiction);
->>>>>>> f850024 (final deployment commit-v1)
+  }
+  if (metadata.rightJurisdiction) {
+    formData.append("right_jurisdiction", metadata.rightJurisdiction);
+  }
+  if (metadata.leftNiceClasses) {
+    formData.append("left_nice_classes", metadata.leftNiceClasses);
+  }
+  if (metadata.rightNiceClasses) {
+    formData.append("right_nice_classes", metadata.rightNiceClasses);
+  }
+  if (metadata.leftGoodsServices) {
+    formData.append("left_goods_services", metadata.leftGoodsServices);
+  }
+  if (metadata.rightGoodsServices) {
+    formData.append("right_goods_services", metadata.rightGoodsServices);
+  }
+  if (metadata.sourceName) {
+    formData.append("source_name", metadata.sourceName);
+  }
+  if (metadata.sourceUrl) {
+    formData.append("source_url", metadata.sourceUrl);
+  }
+  if (metadata.sourceRetrievedAt) {
+    formData.append("source_retrieved_at", metadata.sourceRetrievedAt);
   }
 
-  const analysisMetadata = reverseMixedPair
-    ? {
-        ...metadata,
-        leftJurisdiction: metadata.rightJurisdiction,
-        rightJurisdiction: metadata.leftJurisdiction,
-        leftNiceClasses: metadata.rightNiceClasses,
-        rightNiceClasses: metadata.leftNiceClasses,
-        leftGoodsServices: metadata.rightGoodsServices,
-        rightGoodsServices: metadata.leftGoodsServices,
-      }
-    : metadata;
-
-  if (analysisMetadata.jurisdiction) {
-    formData.append("jurisdiction", analysisMetadata.jurisdiction);
-  }
-  if (analysisMetadata.niceClasses) {
-    formData.append("nice_classes", analysisMetadata.niceClasses);
-  }
-  if (analysisMetadata.leftJurisdiction) {
-    formData.append("left_jurisdiction", analysisMetadata.leftJurisdiction);
-  }
-  if (analysisMetadata.rightJurisdiction) {
-    formData.append("right_jurisdiction", analysisMetadata.rightJurisdiction);
-  }
-  if (analysisMetadata.leftNiceClasses) {
-    formData.append("left_nice_classes", analysisMetadata.leftNiceClasses);
-  }
-  if (analysisMetadata.rightNiceClasses) {
-    formData.append("right_nice_classes", analysisMetadata.rightNiceClasses);
-  }
-  if (analysisMetadata.leftGoodsServices) {
-    formData.append("left_goods_services", analysisMetadata.leftGoodsServices);
-  }
-  if (analysisMetadata.rightGoodsServices) {
-    formData.append("right_goods_services", analysisMetadata.rightGoodsServices);
-  }
-  if (analysisMetadata.sourceName) {
-    formData.append("source_name", analysisMetadata.sourceName);
-  }
-  if (analysisMetadata.sourceUrl) {
-    formData.append("source_url", analysisMetadata.sourceUrl);
-  }
-  if (analysisMetadata.sourceRetrievedAt) {
-    formData.append("source_retrieved_at", analysisMetadata.sourceRetrievedAt);
-  }
-
-  const response = await apiFetch(
-
-    `${API_BASE_URL}/api/upload/two-files`,
-
-    {
-
-      method: "POST",
-
-      body: formData,
-
-    }
-
-  );
-
+  const response = await apiFetch(`${API_BASE_URL}/api/upload/two-files`, {
+    method: "POST",
+    body: formData,
+  });
   if (!response.ok) {
-
     const text = await response.text();
-
-    throw new Error(
-
-      `Upload failed (${response.status}): ${text}`
-
-    );
-
+    throw new Error(`Upload failed (${response.status}): ${text}`);
   }
-
   return response.json();
-
 }
 
 export async function analyzeJob(

@@ -2816,13 +2816,8 @@ function App() {
             <FileBox
 
               title="Right Trademark Document"
-<<<<<<< HEAD
-              subtitle="Drop a PDF or XLSX file here"
-              accept=".xlsx,.pdf,application/pdf"
-=======
               subtitle="Drop a PDF, XLSX, or image file here"
               accept=".pdf,.xlsx,.xlxs,.svg,.jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff,.gif"
->>>>>>> f850024 (final deployment commit-v1)
               file={clientFile}
               onFile={setClientFile}
               onRemove={() => setClientFile(null)}
